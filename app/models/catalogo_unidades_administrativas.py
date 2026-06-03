@@ -17,10 +17,8 @@ class CatalogoUnidadesAdministrativas(Base):
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
-
-   
-
     # Relaciones
+    techos_financieros = relationship("TechoFinanciero", back_populates="unidad_administrativa")
+    programas = relationship("CatalogoProgramas", back_populates="unidad_administrativa")
+
      
-    # TODO: Agregar relacion con catalogo_fuentes_financiamiento 
-    # ejecutor = relationship("Ejecutores", back_populates="unidad_administrativa")

@@ -12,7 +12,6 @@ class CatalogoFuentesFinanciamiento(Base):
 
     # Relaciones
     techos_financieros = relationship("TechoFinanciero", back_populates="fuente_financiamiento")
-    # ejecutor = relationship("Ejecutores", back_populates="fuente_financiamiento")
 
     # metricas
     creado_en = Column(DateTime(timezone=True), server_default=func.now())

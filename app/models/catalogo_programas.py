@@ -10,5 +10,16 @@ class CatalogoProgramas(Base):
     clave = Column(String, nullable=False) # clave del programa presupuestal
     programa = Column(String, nullable=False) # TBD: Los programas deberian venir de un catalogo, pero por ahora lo dejamos como string
 
-    # Relaciones 
-    # ejecutor = 
+    # Llaves foraneas
+    ejercicio_id = Column(Integer, ForeignKey("ejercicios.id"), nullable=False)
+    unidad_administrativa_id = Column(Integer, ForeignKey("catalogo_unidades_administrativas.id"), nullable=False)
+    
+    # Relaciones
+    ejercicio = relationship("Ejercicio", back_populates="programas")
+    unidad_administrativa = relationship("CatalogoUnidadesAdministrativas", back_populates="programas")
+    componentes = relationship("Componentes", back_populates="programa")
+
+    # metricas
+    activo = Column(Boolean, default=True)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+    actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())

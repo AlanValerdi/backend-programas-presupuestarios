@@ -12,17 +12,21 @@ class TechoFinanciero(Base):
     __tablename__ = "techos_financieros"
 
     id = Column(Integer, primary_key=True, index=True)
-    # ejercicio_id = Column(Integer, ForeignKey("ejercicios.id"), nullable=False)
+    # TODO: Agregar relación con el modelo de Ejercicio para tener techos financieros específicos por año.
+    
+    # Llaves foraneas
+    ejercicio_id = Column(Integer, ForeignKey("ejercicios.id"), nullable=False)
     unidad_administrativa_id = Column(Integer, ForeignKey("catalogo_unidades_administrativas.id"), nullable=False)
     fuente_financiamiento_id = Column(Integer, ForeignKey("catalogo_fuentes_financiamiento.id"), nullable=False)
     
     # Numeric(15, 2) significa hasta 15 dígitos en total, 2 de ellos decimales.
     monto = Column(Numeric(15, 2), default=0.00, nullable=False)
 
-    creado_en = Column(DateTime(timezone=True), server_default=func.now())
-    actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
-
     # Relaciones
     unidad_administrativa = relationship("CatalogoUnidadesAdministrativas", back_populates="techos_financieros")
     fuente_financiamiento = relationship("CatalogoFuentesFinanciamiento", back_populates="techos_financieros")
-    # ejercicio = relationship("Ejercicio", back_populates="techos_financieros") # Asumiendo que agregas esto en Ejercicio
+    ejercicio = relationship("Ejercicio", back_populates="techos_financieros") # Asumiendo que agregas esto en Ejercicio
+
+    # metricas
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+    actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
