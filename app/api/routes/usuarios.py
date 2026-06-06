@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_db, get_current_user, TokenData, require_any_role
+from app.api.dependencies import get_db, get_current_user, TokenData, require_any_role, require_admin
 from app.crud import crud_usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioOut
 from app.core.security import crear_token_acceso
+from app.models.usuario import RolUsuario
 
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -14,6 +15,7 @@ router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 def register_usuario(
     usuario_in: UsuarioCreate,
     db: Session = Depends(get_db),
+    current_user: TokenData = Depends(require_admin()),
 ):
     existing = crud_usuario.get_usuario_by_username(db, usuario_in.username)
     if existing:
@@ -55,6 +57,13 @@ def login(
     return {"access_token": token, "token_type": "bearer"}
 
 
+@router.post("/logout")
+def logout(
+    current_user: TokenData = Depends(get_current_user),
+):
+    return {"message": "Logout successful", "username": current_user.sub}
+
+
 @router.get("/me", response_model=UsuarioOut)
 def read_current_user(
     current_user: TokenData = Depends(get_current_user),
@@ -73,7 +82,9 @@ def list_usuarios(
     skip: int = 0,
     limit: int = 100,
 ):
-    if current_user.rol == "ejecutores":
+    if current_user.rol == RolUsuario.ADMINISTRADOR:
+        usuarios = crud_usuario.get_usuarios(db, skip=skip, limit=limit)
+    elif current_user.rol == RolUsuario.EJECUTOR:
         usuarios = crud_usuario.get_usuarios_by_unidad(
             db, current_user.unidad_administrativa_id
         )
@@ -91,8 +102,9 @@ def get_usuario(
     user = crud_usuario.get_usuario_by_id(db, usuario_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if current_user.rol == "ejecutores" and user.unidad_administrativa_id != current_user.unidad_administrativa_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if current_user.rol == RolUsuario.EJECUTOR:
+        if user.unidad_administrativa_id != current_user.unidad_administrativa_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     return user
 
 
@@ -106,9 +118,9 @@ def update_usuario(
     user = crud_usuario.get_usuario_by_id(db, usuario_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if current_user.rol == "ejecutores":
+    if current_user.rol == RolUsuario.EJECUTOR:
         if user.unidad_administrativa_id != current_user.unidad_administrativa_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-        if usuario_in.rol and usuario_in.rol != "ejecutores":
+        if usuario_in.rol and usuario_in.rol != RolUsuario.EJECUTOR:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot change role")
     return crud_usuario.update_usuario(db, user, usuario_in)

@@ -18,6 +18,7 @@ class UsuarioCreate(UsuarioBase):
     @classmethod
     def validar_rol(cls, v: str) -> str:
         roles_validos = [
+            RolUsuario.ADMINISTRADOR,
             RolUsuario.PROGRAMACION_PRESUPUESTAL,
             RolUsuario.PLANEACION,
             RolUsuario.EJECUTOR,
@@ -25,6 +26,16 @@ class UsuarioCreate(UsuarioBase):
         if v not in roles_validos:
             raise ValueError(
                 f"Rol inválido. Debe ser uno de: {roles_validos}"
+            )
+        return v
+
+    @field_validator("rol")
+    @classmethod
+    def bloquear_creacion_admin(cls, v: str) -> str:
+        if v == RolUsuario.ADMINISTRADOR:
+            raise ValueError(
+                "No se puede crear un usuario con rol 'administrador' vía API. "
+                "Este rol debe crearse manualmente en la base de datos."
             )
         return v
 
@@ -53,6 +64,7 @@ class UsuarioUpdate(BaseModel):
         if v is None:
             return v
         roles_validos = [
+            RolUsuario.ADMINISTRADOR,
             RolUsuario.PROGRAMACION_PRESUPUESTAL,
             RolUsuario.PLANEACION,
             RolUsuario.EJECUTOR,
@@ -60,6 +72,16 @@ class UsuarioUpdate(BaseModel):
         if v not in roles_validos:
             raise ValueError(
                 f"Rol inválido. Debe ser uno de: {roles_validos}"
+            )
+        return v
+
+    @field_validator("rol")
+    @classmethod
+    def bloquear_cambio_a_admin(cls, v: Optional[str]) -> Optional[str]:
+        if v == RolUsuario.ADMINISTRADOR:
+            raise ValueError(
+                "No se puede asignar el rol 'administrador' vía API. "
+                "Este rol debe asignarse manualmente en la base de datos."
             )
         return v
 

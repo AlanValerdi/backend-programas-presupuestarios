@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_db
+from app.api.dependencies import get_db, get_current_user, TokenData
 from app.models.catalogo_programas import CatalogoProgramas
 from app.models.componentes import Componentes
 from app.models.actividades import Actividades
+from app.models.usuario import RolUsuario
 from app.schemas.programas import ProgramaOut, ComponenteOut, ActividadOut
 
 
@@ -11,12 +12,18 @@ router = APIRouter(prefix="/api/programas", tags=["programas"])
 
 
 @router.get("", response_model=list[ProgramaOut])
-def listar_programas(db: Session = Depends(get_db)):
-    programas = (
-        db.query(CatalogoProgramas)
-        .order_by(CatalogoProgramas.clave)
-        .all()
-    )
+def listar_programas(
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    query = db.query(CatalogoProgramas)
+
+    if current_user.rol == RolUsuario.EJECUTOR:
+        query = query.filter(
+            CatalogoProgramas.unidad_administrativa_id == current_user.unidad_administrativa_id
+        )
+
+    programas = query.order_by(CatalogoProgramas.clave).all()
     return [
         {
             "id": p.id,
@@ -39,7 +46,11 @@ def listar_programas(db: Session = Depends(get_db)):
 
 
 @router.get("/{clave}", response_model=ProgramaOut)
-def obtener_programa(clave: str, db: Session = Depends(get_db)):
+def obtener_programa(
+    clave: str,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
     programa = (
         db.query(CatalogoProgramas)
         .filter(CatalogoProgramas.clave == clave)
@@ -47,6 +58,11 @@ def obtener_programa(clave: str, db: Session = Depends(get_db)):
     )
     if not programa:
         raise HTTPException(status_code=404, detail="Programa no encontrado")
+
+    if current_user.rol == RolUsuario.EJECUTOR:
+        if programa.unidad_administrativa_id != current_user.unidad_administrativa_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     return {
         "id": programa.id,
         "clave": programa.clave,
@@ -66,7 +82,11 @@ def obtener_programa(clave: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{clave}/componentes", response_model=list[ComponenteOut])
-def listar_componentes(clave: str, db: Session = Depends(get_db)):
+def listar_componentes(
+    clave: str,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
     programa = (
         db.query(CatalogoProgramas)
         .filter(CatalogoProgramas.clave == clave)
@@ -74,6 +94,11 @@ def listar_componentes(clave: str, db: Session = Depends(get_db)):
     )
     if not programa:
         raise HTTPException(status_code=404, detail="Programa no encontrado")
+
+    if current_user.rol == RolUsuario.EJECUTOR:
+        if programa.unidad_administrativa_id != current_user.unidad_administrativa_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     componentes = (
         db.query(Componentes)
         .filter(Componentes.programa_id == programa.id)
@@ -92,7 +117,11 @@ def listar_componentes(clave: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{clave}/actividades", response_model=list[ActividadOut])
-def listar_actividades(clave: str, db: Session = Depends(get_db)):
+def listar_actividades(
+    clave: str,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
     programa = (
         db.query(CatalogoProgramas)
         .filter(CatalogoProgramas.clave == clave)
@@ -100,6 +129,11 @@ def listar_actividades(clave: str, db: Session = Depends(get_db)):
     )
     if not programa:
         raise HTTPException(status_code=404, detail="Programa no encontrado")
+
+    if current_user.rol == RolUsuario.EJECUTOR:
+        if programa.unidad_administrativa_id != current_user.unidad_administrativa_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     actividades = (
         db.query(Actividades)
         .join(Componentes, Actividades.componente_id == Componentes.id)

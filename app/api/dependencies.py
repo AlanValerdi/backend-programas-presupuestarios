@@ -46,6 +46,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
 
 def require_roles(*roles: str):
     def role_checker(current_user: TokenData = Depends(get_current_user)):
+        if current_user.rol == RolUsuario.ADMINISTRADOR:
+            return current_user
         if current_user.rol not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -53,6 +55,17 @@ def require_roles(*roles: str):
             )
         return current_user
     return role_checker
+
+
+def require_admin():
+    def admin_checker(current_user: TokenData = Depends(get_current_user)):
+        if current_user.rol != RolUsuario.ADMINISTRADOR:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Administrator role required.",
+            )
+        return current_user
+    return admin_checker
 
 
 def require_planeacion():
@@ -69,6 +82,7 @@ def require_ejecutor():
 
 def require_any_role():
     return require_roles(
+        RolUsuario.ADMINISTRADOR,
         RolUsuario.PROGRAMACION_PRESUPUESTAL,
         RolUsuario.PLANEACION,
         RolUsuario.EJECUTOR,

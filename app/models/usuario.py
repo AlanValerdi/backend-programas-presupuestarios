@@ -5,6 +5,7 @@ from app.db.database import Base
 
 
 class RolUsuario:
+    ADMINISTRADOR = "administrador"
     PROGRAMACION_PRESUPUESTAL = "programacion-presupuestal"
     PLANEACION = "planeacion"
     EJECUTOR = "ejecutores"
@@ -29,7 +30,7 @@ class Usuario(Base):
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
-    programaciones = relationship("ProgramacionMeta", back_populates="usuario")
+    # programaciones = relationship("ProgramacionMeta", back_populates="usuario")
     unidad_administrativa = relationship(
         "CatalogoUnidadesAdministrativas", foreign_keys=[unidad_administrativa_id]
     )
