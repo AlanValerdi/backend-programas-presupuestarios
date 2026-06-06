@@ -15,6 +15,7 @@ class Componentes(Base):
 
     # Relaciones
     programa = relationship("CatalogoProgramas", back_populates="componentes")
+    actividades = relationship("Actividades", back_populates="componente")
 
     # metricas
     activo = Column(Boolean, default=True)
