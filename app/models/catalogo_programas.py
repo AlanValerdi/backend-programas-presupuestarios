@@ -21,5 +21,6 @@ class CatalogoProgramas(Base):
 
     # metricas
     activo = Column(Boolean, default=True)
+    estado_flujo = Column(String, nullable=False, default="configuracion", server_default="configuracion")
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())

@@ -9,6 +9,7 @@ class UsuarioBase(BaseModel):
     telefono: Optional[str] = Field(None, max_length=20)
     rol: str = Field(default=RolUsuario.EJECUTOR)
     unidad_administrativa_id: Optional[int] = None
+    mostrar_montos: bool = True
 
 
 class UsuarioCreate(UsuarioBase):
@@ -57,6 +58,7 @@ class UsuarioUpdate(BaseModel):
     rol: Optional[str] = None
     unidad_administrativa_id: Optional[int] = None
     activo: Optional[bool] = None
+    mostrar_montos: Optional[bool] = None
 
     @field_validator("rol")
     @classmethod

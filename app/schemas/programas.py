@@ -1,4 +1,13 @@
 from pydantic import BaseModel
+from typing import Optional, List
+
+
+class PresupuestoDetalle(BaseModel):
+    recursosFiscales: float = 0.0
+    participaciones: float = 0.0
+    faismun: float = 0.0
+    fortamun: float = 0.0
+    otros: float = 0.0
 
 
 class ProgramaOut(BaseModel):
@@ -9,9 +18,13 @@ class ProgramaOut(BaseModel):
     ejecutorNombre: str
     ejercicio: int
     fechaCreacion: str
-    ultimaActualizacion: str | None
+    ultimaActualizacion: Optional[str] = None
+    presupuestoAsignado: float = 0.0
+    presupuesto: PresupuestoDetalle = PresupuestoDetalle()
+    estadoFlujo: str = "configuracion"
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
 
 class ComponenteOut(BaseModel):
@@ -20,7 +33,29 @@ class ComponenteOut(BaseModel):
     clave: str
     descripcion: str
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
+
+
+class EvidenciaOut(BaseModel):
+    id: int
+    nombre_original: str
+    url_archivo: str
+    mime_type: str
+
+    class Config:
+        from_attributes = True
+
+
+class ProgramacionMensualOut(BaseModel):
+    mes: str
+    mesNumero: int
+    meta: int
+    estado: str
+    avanceMeta: int
+    status: str
+    evidencias: List[EvidenciaOut] = []
+    comentarios: Optional[str] = None
 
 
 class ActividadOut(BaseModel):
@@ -32,5 +67,8 @@ class ActividadOut(BaseModel):
     metaAnual: int
     costoEstimado: float
     unidadAdministrativaClave: str
+    lineaAccionPmd: str = ""
+    programacionMensual: List[ProgramacionMensualOut] = []
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True

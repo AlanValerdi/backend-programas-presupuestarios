@@ -253,8 +253,8 @@ def poblar_matriz_programatica(
             cols_ffill.append(col_map[key])
     df[cols_ffill] = df[cols_ffill].ffill()
 
-    db_programas = {p.clave: p for p in db.query(CatalogoProgramas).filter(CatalogoProgramas.ejercicio_id == ejercicio_id).all()}
-    db_componentes = {c.clave: c for c in db.query(Componentes).all()}
+    db_programas = {(p.clave, p.unidad_administrativa_id): p for p in db.query(CatalogoProgramas).filter(CatalogoProgramas.ejercicio_id == ejercicio_id).all()}
+    db_componentes = {(c.clave, c.programa_id): c for c in db.query(Componentes).all()}
     db_actividades = {a.clave: a for a in db.query(Actividades).all()}
     db_pmd = {p.clave: p for p in db.query(CatalogoPMD).all()}
 
@@ -325,7 +325,8 @@ def poblar_matriz_programatica(
         unidad_ejecutora = db_unidades.get(ejecutor_clave) if ejecutor_clave else None
 
         if prog_clave and prog_clave not in ("", "nan", "None") and prog_nombre:
-            if prog_clave not in db_programas:
+            prog_key = (prog_clave, unidad_ejecutora.id if unidad_ejecutora else None)
+            if prog_key not in db_programas:
                 nuevo_p = CatalogoProgramas(
                     clave=prog_clave,
                     programa=prog_nombre,
@@ -334,11 +335,11 @@ def poblar_matriz_programatica(
                 )
                 db.add(nuevo_p)
                 db.flush()
-                db_programas[prog_clave] = nuevo_p
+                db_programas[prog_key] = nuevo_p
                 nuevos_programas.append({"clave": prog_clave, "programa": prog_nombre})
                 programa_actual = nuevo_p
             else:
-                p = db_programas[prog_clave]
+                p = db_programas[prog_key]
                 if p.programa != prog_nombre:
                     modificados_programas.append({"clave": prog_clave, "cambios": [f"programa: {p.programa} -> {prog_nombre}"]})
                     p.programa = prog_nombre
@@ -352,7 +353,8 @@ def poblar_matriz_programatica(
                 except (ValueError, TypeError):
                     comp_monto = 0.0
 
-            if comp_clave not in db_componentes:
+            comp_key = (comp_clave, programa_actual.id)
+            if comp_key not in db_componentes:
                 nuevo_c = Componentes(
                     clave=comp_clave,
                     descripcion=comp_desc,
@@ -360,11 +362,11 @@ def poblar_matriz_programatica(
                 )
                 db.add(nuevo_c)
                 db.flush()
-                db_componentes[comp_clave] = nuevo_c
+                db_componentes[comp_key] = nuevo_c
                 nuevos_componentes.append({"clave": comp_clave, "descripcion": comp_desc})
                 componente_actual = nuevo_c
             else:
-                c = db_componentes[comp_clave]
+                c = db_componentes[comp_key]
                 if comp_desc and c.descripcion != comp_desc:
                     modificados_componentes.append({"clave": comp_clave, "cambios": [f"descripcion: {c.descripcion} -> {comp_desc}"]})
                     c.descripcion = comp_desc

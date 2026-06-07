@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_db, get_current_user, TokenData, require_any_role, require_admin
+from app.api.dependencies import get_db, get_current_user, TokenData, require_any_role, require_admin, require_roles
 from app.crud import crud_usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioOut
 from app.core.security import crear_token_acceso
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 def register_usuario(
     usuario_in: UsuarioCreate,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(require_admin()),
+    current_user: TokenData = Depends(require_roles(RolUsuario.PLANEACION)),
 ):
     existing = crud_usuario.get_usuario_by_username(db, usuario_in.username)
     if existing:

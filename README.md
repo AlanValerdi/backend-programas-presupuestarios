@@ -30,3 +30,8 @@ my_fastapi_project/
 ├── .gitignore
 ├── requirements.txt          # Or pyproject.toml / Pipfile
 └── Dockerfile                # Deployment instructions
+
+--Deuda tecnica
+Si quieres que el dry‑run no marque cambios falsos y el JSON se vea limpio: conviene normalizar (Decimal o round a 2 decimales) antes de comparar y responder.
+
+python -c "import secrets; print(secrets.token_hex(32))"

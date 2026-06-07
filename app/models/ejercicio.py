@@ -13,6 +13,7 @@ class Ejercicio(Base):
     fecha_inicio_planeacion = Column(DateTime, comment="Cuándo abre el sistema para armar el POA")
     fecha_fin_planeacion = Column(DateTime, comment="Cuándo cierra la creación de programas")
     planeacion_abierta = Column(Boolean, default=False, comment="Switch manual de emergencia")
+    mostrar_montos = Column(Boolean, default=True, server_default="true", comment="Permite ocultar/mostrar montos en el sistema")
     
     # El estatus general del año fiscal
     activo = Column(Boolean, default=True)

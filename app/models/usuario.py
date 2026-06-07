@@ -27,6 +27,7 @@ class Usuario(Base):
     )
 
     activo = Column(Boolean, default=True)
+    mostrar_montos = Column(Boolean, default=True, nullable=False)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
