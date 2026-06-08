@@ -87,7 +87,11 @@ def listar_programas(
         programas_grouped[p.clave].append(p)
         
     res = []
-    for clave in sorted(programas_grouped.keys()):
+    import re
+    def natural_sort_key(s):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+        
+    for clave in sorted(programas_grouped.keys(), key=natural_sort_key):
         group = programas_grouped[clave]
         p0 = group[0]
         
@@ -165,6 +169,220 @@ def actualizar_settings(
     ejercicio.mostrar_montos = mostrar_montos
     db.commit()
     return {"mostrar_montos": ejercicio.mostrar_montos}
+
+
+@router.get("/actividades/revision")
+def listar_actividades_revision(
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    from app.models.programacion_avance import StatusAvance, ProgramacionAvance
+    from app.models.programacion_meta import ProgramacionMeta
+
+    query = db.query(Actividades).join(
+        Componentes, Actividades.componente_id == Componentes.id
+    ).join(
+        CatalogoProgramas, Componentes.programa_id == CatalogoProgramas.id
+    )
+
+    if current_user.rol == RolUsuario.EJECUTOR:
+        query = query.filter(
+            CatalogoProgramas.unidad_administrativa_id == current_user.unidad_administrativa_id
+        )
+
+    # Filter to only activities that have at least one month in ENVIADO status
+    query = query.join(
+        ProgramacionMeta, Actividades.id == ProgramacionMeta.actividad_id
+    ).join(
+        ProgramacionAvance, ProgramacionMeta.id == ProgramacionAvance.programacion_meta_id
+    ).filter(
+        ProgramacionAvance.status == StatusAvance.ENVIADO
+    ).distinct()
+
+    actividades = query.all()
+
+    # Sort naturally
+    import re
+    def natural_sort_key(s):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+    
+    actividades = sorted(actividades, key=lambda a: natural_sort_key(a.clave or ""))
+
+    meses_nombres = {
+        1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
+        7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"
+    }
+
+    res = []
+    for a in actividades:
+        linea_accion_pmd = ", ".join([pmd.clave for pmd in a.lineas_pmd]) if a.lineas_pmd else "N/A"
+
+        # Cargar programación mensual
+        metas_dict = {m.mes: m for m in a.metas_mensuales}
+        programacion_mensual = []
+        for num_mes in range(1, 13):
+            nombre_mes = meses_nombres[num_mes]
+            meta_record = metas_dict.get(num_mes)
+            
+            estado = "en_revision"
+            avance_meta = 0
+            status_val = "BORRADOR"
+            comentarios_val = None
+            evidencias_val = []
+            
+            if meta_record:
+                avance = meta_record.avance
+                if avance:
+                    avance_meta = avance.avance_meta
+                    status_val = avance.status.value if avance.status else "BORRADOR"
+                    comentarios_val = avance.comentarios_revision
+                    evidencias_val = [
+                        {
+                            "id": ev.id,
+                            "nombre_original": ev.nombre_original,
+                            "url_archivo": ev.url_archivo,
+                            "mime_type": ev.mime_type
+                        }
+                        for ev in avance.evidencias if ev.activo
+                    ]
+                    if avance.status == StatusAvance.FINALIZADO:
+                        estado = "finalizado"
+
+            programacion_mensual.append({
+                "mes": nombre_mes,
+                "mesNumero": num_mes,
+                "meta": meta_record.cantidad_programada if meta_record else 0,
+                "estado": estado,
+                "avanceMeta": avance_meta,
+                "status": status_val,
+                "evidencias": evidencias_val,
+                "comentarios": comentarios_val
+            })
+
+        unidad_clave = a.componente.programa.unidad_administrativa.clave if (
+            a.componente and a.componente.programa and a.componente.programa.unidad_administrativa
+        ) else ""
+
+        res.append({
+            "id": a.id,
+            "programaClave": a.componente.programa.clave if (a.componente and a.componente.programa) else "",
+            "componenteClave": a.componente.clave if a.componente else "",
+            "clave": a.clave,
+            "descripcion": a.descripcion,
+            "metaAnual": a.meta,
+            "costoEstimado": float(a.monto or 0),
+            "unidadAdministrativaClave": unidad_clave,
+            "lineaAccionPmd": linea_accion_pmd,
+            "programacionMensual": programacion_mensual
+        })
+    return res
+
+
+@router.get("/actividades/revisadas")
+def listar_actividades_revisadas(
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    from app.models.programacion_avance import StatusAvance, ProgramacionAvance
+    from app.models.programacion_meta import ProgramacionMeta
+
+    query = db.query(Actividades).join(
+        Componentes, Actividades.componente_id == Componentes.id
+    ).join(
+        CatalogoProgramas, Componentes.programa_id == CatalogoProgramas.id
+    )
+
+    if current_user.rol == RolUsuario.EJECUTOR:
+        query = query.filter(
+            CatalogoProgramas.unidad_administrativa_id == current_user.unidad_administrativa_id
+        )
+
+    # Filter to only activities that have at least one month in FINALIZADO status
+    query = query.join(
+        ProgramacionMeta, Actividades.id == ProgramacionMeta.actividad_id
+    ).join(
+        ProgramacionAvance, ProgramacionMeta.id == ProgramacionAvance.programacion_meta_id
+    ).filter(
+        ProgramacionAvance.status == StatusAvance.FINALIZADO
+    ).distinct()
+
+    actividades = query.all()
+
+    # Sort naturally
+    import re
+    def natural_sort_key(s):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+    
+    actividades = sorted(actividades, key=lambda a: natural_sort_key(a.clave or ""))
+
+    meses_nombres = {
+        1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
+        7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"
+    }
+
+    res = []
+    for a in actividades:
+        linea_accion_pmd = ", ".join([pmd.clave for pmd in a.lineas_pmd]) if a.lineas_pmd else "N/A"
+
+        # Cargar programación mensual
+        metas_dict = {m.mes: m for m in a.metas_mensuales}
+        programacion_mensual = []
+        for num_mes in range(1, 13):
+            nombre_mes = meses_nombres[num_mes]
+            meta_record = metas_dict.get(num_mes)
+            
+            estado = "en_revision"
+            avance_meta = 0
+            status_val = "BORRADOR"
+            comentarios_val = None
+            evidencias_val = []
+            
+            if meta_record:
+                avance = meta_record.avance
+                if avance:
+                    avance_meta = avance.avance_meta
+                    status_val = avance.status.value if avance.status else "BORRADOR"
+                    comentarios_val = avance.comentarios_revision
+                    evidencias_val = [
+                        {
+                            "id": ev.id,
+                            "nombre_original": ev.nombre_original,
+                            "url_archivo": ev.url_archivo,
+                            "mime_type": ev.mime_type
+                        }
+                        for ev in avance.evidencias if ev.activo
+                    ]
+                    if avance.status == StatusAvance.FINALIZADO:
+                        estado = "finalizado"
+
+            programacion_mensual.append({
+                "mes": nombre_mes,
+                "mesNumero": num_mes,
+                "meta": meta_record.cantidad_programada if meta_record else 0,
+                "estado": estado,
+                "avanceMeta": avance_meta,
+                "status": status_val,
+                "evidencias": evidencias_val,
+                "comentarios": comentarios_val
+            })
+
+        unidad_clave = a.componente.programa.unidad_administrativa.clave if (
+            a.componente and a.componente.programa and a.componente.programa.unidad_administrativa
+        ) else ""
+
+        res.append({
+            "id": a.id,
+            "programaClave": a.componente.programa.clave if (a.componente and a.componente.programa) else "",
+            "componenteClave": a.componente.clave if a.componente else "",
+            "clave": a.clave,
+            "descripcion": a.descripcion,
+            "metaAnual": a.meta,
+            "costoEstimado": float(a.monto or 0),
+            "unidadAdministrativaClave": unidad_clave,
+            "lineaAccionPmd": linea_accion_pmd,
+            "programacionMensual": programacion_mensual
+        })
+    return res
 
 
 @router.get("/{clave}", response_model=ProgramaOut)
@@ -410,9 +628,14 @@ def listar_componentes(
     componentes = (
         db.query(Componentes)
         .filter(Componentes.programa_id.in_(prog_ids))
-        .order_by(Componentes.clave)
         .all()
     )
+    import re
+    def natural_sort_key(s):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+    
+    componentes = sorted(componentes, key=lambda c: natural_sort_key(c.clave or ""))
+
     return [
         {
             "id": c.id,
@@ -445,9 +668,13 @@ def listar_actividades(
         db.query(Actividades)
         .join(Componentes, Actividades.componente_id == Componentes.id)
         .filter(Componentes.programa_id.in_(prog_ids))
-        .order_by(Actividades.clave)
         .all()
     )
+    import re
+    def natural_sort_key(s):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+    
+    actividades = sorted(actividades, key=lambda a: natural_sort_key(a.clave or ""))
 
     meses_nombres = {
         1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",

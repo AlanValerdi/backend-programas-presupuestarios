@@ -16,6 +16,8 @@ services:
     # image: gpp-servicio
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       # Nota que el host aquí es "db", que coincide con el nombre del servicio de arriba
       - SQLALCHEMY_DATABASE_URL=postgresql://admin:password123@db:5432/gpp_db
