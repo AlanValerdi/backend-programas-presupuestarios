@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: gpp_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    # Si ya tienes la imagen construida, en vez de build usa:
+    # image: gpp-servicio
+    ports:
+      - "8000:8000"
+    environment:
+      # Nota que el host aquí es "db", que coincide con el nombre del servicio de arriba
+      - SQLALCHEMY_DATABASE_URL=postgresql://admin:password123@db:5432/gpp_db
+      - ADMIN_USERNAME=admin
+      - ADMIN_EMAIL=admin@admingpp.com
+      - ADMIN_PASSWORD=admin123
+    depends_on:
+      - db
+    # Este comando corre las migraciones PRIMERO, y luego levanta la aplicación
+    command: bash -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  postgres_data:
