@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, DateTime, Boolean, ForeignKey, String
+from sqlalchemy import Table, Column, Integer, DateTime, Boolean, ForeignKey, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -9,6 +9,25 @@ class RolUsuario:
     PROGRAMACION_PRESUPUESTAL = "programacion-presupuestal"
     PLANEACION = "planeacion"
     EJECUTOR = "ejecutores"
+
+
+# Table to associate users to multiple administrative units (Many-to-Many)
+usuario_unidad_asociacion = Table(
+    "usuario_unidad_asociacion",
+    Base.metadata,
+    Column(
+        "usuario_id",
+        Integer,
+        ForeignKey("usuarios.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "unidad_administrativa_id",
+        Integer,
+        ForeignKey("catalogo_unidades_administrativas.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
 
 
 class Usuario(Base):
@@ -31,7 +50,12 @@ class Usuario(Base):
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # programaciones = relationship("ProgramacionMeta", back_populates="usuario")
+    # Relationships
     unidad_administrativa = relationship(
         "CatalogoUnidadesAdministrativas", foreign_keys=[unidad_administrativa_id]
+    )
+    unidades_administrativas = relationship(
+        "CatalogoUnidadesAdministrativas",
+        secondary=usuario_unidad_asociacion,
+        backref="usuarios"
     )

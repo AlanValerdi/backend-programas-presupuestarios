@@ -14,6 +14,7 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     password: str = Field(..., min_length=8)
+    unidades_administrativas_ids: Optional[list[int]] = None
 
     @field_validator("rol")
     @classmethod
@@ -57,6 +58,7 @@ class UsuarioUpdate(BaseModel):
     telefono: Optional[str] = Field(None, max_length=20)
     rol: Optional[str] = None
     unidad_administrativa_id: Optional[int] = None
+    unidades_administrativas_ids: Optional[list[int]] = None
     activo: Optional[bool] = None
     mostrar_montos: Optional[bool] = None
 
@@ -88,9 +90,19 @@ class UsuarioUpdate(BaseModel):
         return v
 
 
+class UnidadSimpleOut(BaseModel):
+    id: int
+    clave: str
+    nombre: str
+
+    class Config:
+        from_attributes = True
+
+
 class UsuarioOut(UsuarioBase):
     id: int
     activo: bool
+    unidades_administrativas: list[UnidadSimpleOut] = []
 
     class Config:
         from_attributes = True

@@ -124,3 +124,32 @@ def update_usuario(
         if usuario_in.rol and usuario_in.rol != RolUsuario.EJECUTOR:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot change role")
     return crud_usuario.update_usuario(db, user, usuario_in)
+
+
+@router.post("/switch-context/{unidad_id}")
+def switch_context(
+    unidad_id: int,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    from app.models.usuario import Usuario
+    user = db.query(Usuario).filter(Usuario.username == current_user.sub).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    allowed_ids = [u.id for u in user.unidades_administrativas]
+    if unidad_id not in allowed_ids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access to this unit is not authorized for this user",
+        )
+
+    user.unidad_administrativa_id = unidad_id
+    db.commit()
+
+    token = crear_token_acceso(
+        data={"sub": user.username},
+        rol=user.rol,
+        unidad_administrativa_id=unidad_id,
+    )
+    return {"access_token": token, "token_type": "bearer"}
