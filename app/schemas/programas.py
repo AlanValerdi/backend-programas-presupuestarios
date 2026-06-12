@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import datetime
 
 
 class PresupuestoDetalle(BaseModel):
@@ -56,6 +57,8 @@ class ProgramacionMensualOut(BaseModel):
     status: str
     evidencias: List[EvidenciaOut] = []
     comentarios: Optional[str] = None
+    fechaEnvio: Optional[datetime] = None
+    fechaRevision: Optional[datetime] = None
 
 
 class ActividadOut(BaseModel):

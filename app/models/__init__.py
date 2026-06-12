@@ -11,7 +11,7 @@ from app.models.componentes import Componentes
 from app.models.ejercicio import Ejercicio
 from app.models.inter_actividades_pmd import ActividadPMD
 from app.models.inter_techo_financiero import TechoFinanciero
-from app.models.programacion_avance import ProgramacionAvance
+from app.models.programacion_avance import ProgramacionAvance, TrazabilidadAvances
 from app.models.programacion_evidencia import ProgramacionEvidencia
 from app.models.programacion_meta import ProgramacionMeta
 from app.models.usuario import Usuario, RolUsuario

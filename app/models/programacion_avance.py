@@ -37,4 +37,19 @@ class ProgramacionAvance(Base):
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
+
+class TrazabilidadAvances(Base):
+    __tablename__ = "trazabilidad_avances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    programacion_avance_id = Column(Integer, ForeignKey("programacion_avances.id"), nullable=False)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    accion = Column(String(50), nullable=False)
+    detalles = Column(Text, nullable=True)
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relaciones
+    avance = relationship("ProgramacionAvance")
+    usuario = relationship("Usuario")
+
   

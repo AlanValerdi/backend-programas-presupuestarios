@@ -10,9 +10,9 @@ from app.api.dependencies import get_db, get_current_user, TokenData
 from app.models.catalogo_programas import CatalogoProgramas
 from app.models.componentes import Componentes
 from app.models.actividades import Actividades
-from app.models.usuario import RolUsuario
+from app.models.usuario import RolUsuario, Usuario
 from app.models.inter_techo_financiero import TechoFinanciero
-from app.models.programacion_avance import StatusAvance, ProgramacionAvance
+from app.models.programacion_avance import StatusAvance, ProgramacionAvance, TrazabilidadAvances
 from app.models.programacion_meta import ProgramacionMeta
 from app.models.programacion_evidencia import ProgramacionEvidencia
 from app.models.captura_periodos import CapturaPeriodos
@@ -21,6 +21,21 @@ from app.schemas.programas import ProgramaOut, ComponenteOut, ActividadOut
 
 
 router = APIRouter(prefix="/api/programas", tags=["programas"])
+
+
+def registrar_trazabilidad(db: Session, avance_id: int, user_sub: str, accion: str, detalles: str):
+    user = db.query(Usuario).filter(
+        (Usuario.email == user_sub) | (Usuario.username == user_sub)
+    ).first()
+    user_id = user.id if user else None
+    log = TrazabilidadAvances(
+        programacion_avance_id=avance_id,
+        usuario_id=user_id,
+        accion=accion,
+        detalles=detalles
+    )
+    db.add(log)
+    db.flush()
 
 
 def obtener_presupuesto_programa(db: Session, unidad_id: int, ejercicio_id: int):
@@ -230,12 +245,16 @@ def listar_actividades_revision(
             comentarios_val = None
             evidencias_val = []
             
+            fecha_envio_val = None
+            fecha_revision_val = None
             if meta_record:
                 avance = meta_record.avance
                 if avance:
                     avance_meta = avance.avance_meta
                     status_val = avance.status.value if avance.status else "BORRADOR"
                     comentarios_val = avance.comentarios_revision
+                    fecha_envio_val = avance.fecha_envio
+                    fecha_revision_val = avance.fecha_revision
                     evidencias_val = [
                         {
                             "id": ev.id,
@@ -256,7 +275,9 @@ def listar_actividades_revision(
                 "avanceMeta": avance_meta,
                 "status": status_val,
                 "evidencias": evidencias_val,
-                "comentarios": comentarios_val
+                "comentarios": comentarios_val,
+                "fechaEnvio": fecha_envio_val,
+                "fechaRevision": fecha_revision_val
             })
 
         unidad_clave = a.componente.programa.unidad_administrativa.clave if (
@@ -337,12 +358,16 @@ def listar_actividades_revisadas(
             comentarios_val = None
             evidencias_val = []
             
+            fecha_envio_val = None
+            fecha_revision_val = None
             if meta_record:
                 avance = meta_record.avance
                 if avance:
                     avance_meta = avance.avance_meta
                     status_val = avance.status.value if avance.status else "BORRADOR"
                     comentarios_val = avance.comentarios_revision
+                    fecha_envio_val = avance.fecha_envio
+                    fecha_revision_val = avance.fecha_revision
                     evidencias_val = [
                         {
                             "id": ev.id,
@@ -363,7 +388,9 @@ def listar_actividades_revisadas(
                 "avanceMeta": avance_meta,
                 "status": status_val,
                 "evidencias": evidencias_val,
-                "comentarios": comentarios_val
+                "comentarios": comentarios_val,
+                "fechaEnvio": fecha_envio_val,
+                "fechaRevision": fecha_revision_val
             })
 
         unidad_clave = a.componente.programa.unidad_administrativa.clave if (
@@ -561,12 +588,16 @@ def obtener_actividad(
         comentarios_val = None
         evidencias_val = []
         
+        fecha_envio_val = None
+        fecha_revision_val = None
         if meta_record:
             avance = meta_record.avance
             if avance:
                 avance_meta = avance.avance_meta
                 status_val = avance.status.value if avance.status else "BORRADOR"
                 comentarios_val = avance.comentarios_revision
+                fecha_envio_val = avance.fecha_envio
+                fecha_revision_val = avance.fecha_revision
                 evidencias_val = [
                     {
                         "id": ev.id,
@@ -587,7 +618,9 @@ def obtener_actividad(
             "avanceMeta": avance_meta,
             "status": status_val,
             "evidencias": evidencias_val,
-            "comentarios": comentarios_val
+            "comentarios": comentarios_val,
+            "fechaEnvio": fecha_envio_val,
+            "fechaRevision": fecha_revision_val
         })
 
     unidad_clave = actividad.componente.programa.unidad_administrativa.clave if (
@@ -698,12 +731,16 @@ def listar_actividades(
             comentarios_val = None
             evidencias_val = []
             
+            fecha_envio_val = None
+            fecha_revision_val = None
             if meta_record:
                 avance = meta_record.avance
                 if avance:
                     avance_meta = avance.avance_meta
                     status_val = avance.status.value if avance.status else "BORRADOR"
                     comentarios_val = avance.comentarios_revision
+                    fecha_envio_val = avance.fecha_envio
+                    fecha_revision_val = avance.fecha_revision
                     evidencias_val = [
                         {
                             "id": ev.id,
@@ -724,7 +761,9 @@ def listar_actividades(
                 "avanceMeta": avance_meta,
                 "status": status_val,
                 "evidencias": evidencias_val,
-                "comentarios": comentarios_val
+                "comentarios": comentarios_val,
+                "fechaEnvio": fecha_envio_val,
+                "fechaRevision": fecha_revision_val
             })
 
         unidad_clave = a.componente.programa.unidad_administrativa.clave if (
@@ -785,6 +824,12 @@ def guardar_avance_mensual(
         ProgramacionAvance.programacion_meta_id == meta.id
     ).first()
 
+    meses_nombres = {
+        1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+        7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+    }
+    mes_nombre = meses_nombres.get(mes, f"Mes {mes}")
+
     if not avance:
         avance = ProgramacionAvance(
             programacion_meta_id=meta.id,
@@ -794,12 +839,36 @@ def guardar_avance_mensual(
         )
         db.add(avance)
         db.flush()
+        registrar_trazabilidad(
+            db,
+            avance.id,
+            current_user.sub,
+            "ENVIAR",
+            f"Avance del mes {mes_nombre} enviado a revisión con meta de {avance_meta}"
+        )
     else:
         if avance.status == StatusAvance.FINALIZADO:
             raise HTTPException(status_code=400, detail="El avance de este mes ya ha sido finalizado y aprobado")
+        
+        if avance.avance_meta != avance_meta:
+            registrar_trazabilidad(
+                db,
+                avance.id,
+                current_user.sub,
+                "MODIFICAR_META",
+                f"Meta del avance del mes {mes_nombre} modificada de {avance.avance_meta} a {avance_meta}"
+            )
+            
         avance.avance_meta = avance_meta
         avance.status = StatusAvance.ENVIADO
         avance.fecha_envio = now
+        registrar_trazabilidad(
+            db,
+            avance.id,
+            current_user.sub,
+            "ENVIAR",
+            f"Avance del mes {mes_nombre} enviado a revisión con meta de {avance_meta}"
+        )
 
     # Save all uploaded files
     for file in files:
@@ -819,6 +888,14 @@ def guardar_avance_mensual(
                 mime_type=file.content_type or "application/octet-stream"
             )
             db.add(evidencia)
+            db.flush()
+            registrar_trazabilidad(
+                db,
+                avance.id,
+                current_user.sub,
+                "ENVIAR",
+                f"Archivo de evidencia '{file.filename}' adjuntado al avance del mes {mes_nombre}"
+            )
 
     db.commit()
     return {"status": "success", "message": "Avance mensual guardado y enviado a revisión"}
@@ -865,15 +942,170 @@ def revisar_avance_mensual(
     if not avance:
         raise HTTPException(status_code=404, detail="Avance no encontrado para este periodo")
 
+    meses_nombres = {
+        1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+        7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+    }
+    mes_nombre = meses_nombres.get(mes, f"Mes {mes}")
+
     if data.accion == "aprobar":
         avance.status = StatusAvance.FINALIZADO
         avance.comentarios_revision = None
+        registrar_trazabilidad(
+            db,
+            avance.id,
+            current_user.sub,
+            "APROBAR",
+            f"Avance del mes {mes_nombre} aprobado y finalizado"
+        )
     elif data.accion == "devolver":
         avance.status = StatusAvance.CORRECCION
         avance.comentarios_revision = data.comentario
+        registrar_trazabilidad(
+            db,
+            avance.id,
+            current_user.sub,
+            "RECHAZAR",
+            f"Avance del mes {mes_nombre} devuelto para corrección. Comentario: {data.comentario}"
+        )
     else:
         raise HTTPException(status_code=400, detail="Acción inválida. Use 'aprobar' o 'devolver'.")
 
     avance.fecha_revision = datetime.datetime.now()
     db.commit()
     return {"status": "success", "message": f"Avance mensual revisado con éxito ({data.accion})"}
+
+
+@router.delete("/evidencia/{evidencia_id}")
+def eliminar_evidencia(
+    evidencia_id: int,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    ev = db.query(ProgramacionEvidencia).filter(ProgramacionEvidencia.id == evidencia_id).first()
+    if not ev or not ev.activo:
+        raise HTTPException(status_code=404, detail="Evidencia no encontrada")
+
+    avance = ev.avance
+    if not avance:
+        raise HTTPException(status_code=404, detail="Avance no encontrado para esta evidencia")
+
+    if current_user.rol == RolUsuario.EJECUTOR:
+        meta = avance.meta
+        if meta and meta.actividad:
+            unidad_id = meta.actividad.componente.programa.unidad_administrativa_id
+            if unidad_id != current_user.unidad_administrativa_id:
+                raise HTTPException(status_code=403, detail="Acceso denegado")
+        
+        if avance.status != StatusAvance.CORRECCION:
+            raise HTTPException(
+                status_code=400,
+                detail="Solo se pueden eliminar documentos de avances devueltos para corrección."
+            )
+
+    ev.activo = False
+    
+    try:
+        if ev.url_archivo and os.path.exists(ev.url_archivo):
+            os.remove(ev.url_archivo)
+    except Exception as e:
+        print(f"Error removing physical file: {e}")
+
+    meses_nombres = {
+        1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+        7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+    }
+    mes_nombre = meses_nombres.get(avance.meta.mes, f"Mes {avance.meta.mes}")
+    
+    registrar_trazabilidad(
+        db,
+        avance.id,
+        current_user.sub,
+        "ELIMINAR_ARCHIVO",
+        f"Archivo de evidencia '{ev.nombre_original}' eliminado del avance del mes {mes_nombre}"
+    )
+    db.commit()
+
+    return {"status": "success", "message": "Evidencia eliminada y registrada en trazabilidad"}
+
+
+@router.get("/actividades/{actividad_id}/mes/{mes}/trazabilidad")
+def obtener_trazabilidad(
+    actividad_id: int,
+    mes: int,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    meta = db.query(ProgramacionMeta).filter(
+        ProgramacionMeta.actividad_id == actividad_id,
+        ProgramacionMeta.mes == mes
+    ).first()
+    if not meta:
+        return []
+
+    avance = db.query(ProgramacionAvance).filter(
+        ProgramacionAvance.programacion_meta_id == meta.id
+    ).first()
+    if not avance:
+        return []
+
+    logs = (
+        db.query(TrazabilidadAvances)
+        .filter(TrazabilidadAvances.programacion_avance_id == avance.id)
+        .order_by(TrazabilidadAvances.creado_en.desc())
+        .all()
+    )
+
+    res = []
+    for log in logs:
+        res.append({
+            "id": log.id,
+            "usuario": log.usuario.username if log.usuario else "Sistema",
+            "rol": log.usuario.rol if log.usuario else "sistema",
+            "accion": log.accion,
+            "detalles": log.detalles,
+            "creadoEn": log.creado_en.isoformat() if log.creado_en else ""
+        })
+    return res
+
+
+@router.get("/trazabilidad")
+def obtener_trazabilidad_global(
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    logs = (
+        db.query(
+            TrazabilidadAvances,
+            ProgramacionMeta.mes,
+            Actividades.clave.label("actividad_clave"),
+            Componentes.clave.label("componente_clave"),
+            CatalogoProgramas.clave.label("programa_clave"),
+            CatalogoProgramas.programa.label("programa_nombre")
+        )
+        .join(ProgramacionAvance, TrazabilidadAvances.programacion_avance_id == ProgramacionAvance.id)
+        .join(ProgramacionMeta, ProgramacionAvance.programacion_meta_id == ProgramacionMeta.id)
+        .join(Actividades, ProgramacionMeta.actividad_id == Actividades.id)
+        .join(Componentes, Actividades.componente_id == Componentes.id)
+        .join(CatalogoProgramas, Componentes.programa_id == CatalogoProgramas.id)
+        .order_by(TrazabilidadAvances.creado_en.desc())
+        .all()
+    )
+
+    res = []
+    for log, mes, actividad_clave, componente_clave, programa_clave, programa_nombre in logs:
+        res.append({
+            "id": log.id,
+            "usuario": log.usuario.username if log.usuario else "Sistema",
+            "rol": log.usuario.rol if log.usuario else "sistema",
+            "accion": log.accion,
+            "detalles": log.detalles,
+            "creadoEn": log.creado_en.isoformat() if log.creado_en else "",
+            "mes": mes,
+            "actividadClave": actividad_clave,
+            "componenteClave": componente_clave,
+            "programaClave": programa_clave,
+            "programaNombre": programa_nombre,
+        })
+    return res
+
