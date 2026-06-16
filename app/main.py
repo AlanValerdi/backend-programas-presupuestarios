@@ -7,6 +7,7 @@ from app.api.routes.unidades import router as unidades_router
 from app.api.routes.programas import router as programas_router
 from app.api.routes.fechas_captura import router as fechas_captura_router
 from app.api.routes.usuarios import router as usuarios_router
+from app.api.routes.telegram import router as telegram_router
 from app.core.config import ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD
 from app.core.security import hashear_password
 from app.db.database import SessionLocal
@@ -48,6 +49,7 @@ app.include_router(unidades_router)
 app.include_router(programas_router)
 app.include_router(fechas_captura_router)
 app.include_router(usuarios_router)
+app.include_router(telegram_router)
 
 
 @app.get("/")

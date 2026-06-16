@@ -15,3 +15,4 @@ from app.models.programacion_avance import ProgramacionAvance, TrazabilidadAvanc
 from app.models.programacion_evidencia import ProgramacionEvidencia
 from app.models.programacion_meta import ProgramacionMeta
 from app.models.usuario import Usuario, RolUsuario
+from app.models.telegram import UsuarioTelegramLink
