@@ -32,6 +32,8 @@ my_fastapi_project/
 └── Dockerfile                # Deployment instructions
 
 --Deuda tecnica
-Si quieres que el dry‑run no marque cambios falsos y el JSON se vea limpio: conviene normalizar (Decimal o round a 2 decimales) antes de comparar y responder.
+Si se espera que Dry‑run no marque cambios falsos y el JSON se vea limpio: conviene normalizar (Decimal o round a 2 decimales) antes de comparar y responder.
 
 python -c "import secrets; print(secrets.token_hex(32))"
+
+curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<PUBLIC_BACKEND_URL>/api/telegram/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>"
