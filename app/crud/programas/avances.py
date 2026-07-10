@@ -50,3 +50,19 @@ def create_avance(
     db.add(avance)
     db.flush()
     return avance
+
+
+def create_draft_avance(
+    db: Session,
+    meta_id: int,
+    avance_meta: int,
+) -> ProgramacionAvance:
+    avance = ProgramacionAvance(
+        programacion_meta_id=meta_id,
+        avance_meta=avance_meta,
+        status=StatusAvance.BORRADOR,
+        fecha_envio=None,
+    )
+    db.add(avance)
+    db.flush()
+    return avance

@@ -5,6 +5,7 @@ from app.api.routes.programas import (
     avances,
     catalogo,
     componentes,
+    documentos,
     evidencia,
     revision,
     revision_queues,
@@ -25,6 +26,7 @@ router.include_router(settings.router)
 router.include_router(revision_queues.router)
 router.include_router(avances.router)
 router.include_router(revision.router)
+router.include_router(documentos.router)
 router.include_router(evidencia.router)
 router.include_router(trazabilidad.router)
 router.include_router(componentes.router)
