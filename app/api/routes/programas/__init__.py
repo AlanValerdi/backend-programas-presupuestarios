@@ -14,7 +14,7 @@ from app.api.routes.programas import (
 )
 from app.schemas.programas import ProgramaOut
 
-router = APIRouter(prefix="/api/programas", tags=["programas"])
+router = APIRouter(prefix="/programas", tags=["programas"])
 
 router.add_api_route(
     "",

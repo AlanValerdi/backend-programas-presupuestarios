@@ -6,7 +6,9 @@ from app.models.usuario import RolUsuario
 
 
 def get_programas_query(db: Session, current_user: TokenData):
-    query = db.query(CatalogoProgramas)
+    query = db.query(CatalogoProgramas).filter(
+        CatalogoProgramas.entidad_id == current_user.entidad_id
+    )
     if current_user.rol == RolUsuario.EJECUTOR:
         query = query.filter(
             CatalogoProgramas.unidad_administrativa_id == current_user.unidad_administrativa_id
@@ -27,8 +29,17 @@ def get_programas_by_clave(
     return query.all()
 
 
-def update_estado_programa(db: Session, clave: str, estado: str) -> None:
-    programas = db.query(CatalogoProgramas).filter(CatalogoProgramas.clave == clave).all()
+def update_estado_programa(
+    db: Session, clave: str, estado: str, entidad_id: int
+) -> None:
+    programas = (
+        db.query(CatalogoProgramas)
+        .filter(
+            CatalogoProgramas.clave == clave,
+            CatalogoProgramas.entidad_id == entidad_id,
+        )
+        .all()
+    )
     for programa in programas:
         programa.estado_flujo = estado
     db.commit()

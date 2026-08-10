@@ -17,7 +17,7 @@ def safe_int(value, default=0):
     except (ValueError, TypeError):
         return default
 
-from app.api.dependencies import get_db
+from app.api.dependencies import get_db, get_entidad_from_slug, require_any_role, TokenData
 from app.models.catalogo_unidades_administrativas import CatalogoUnidadesAdministrativas
 from app.models.catalogo_fuentes_financiamiento import CatalogoFuentesFinanciamiento
 from app.models.inter_techo_financiero import TechoFinanciero
@@ -27,8 +27,9 @@ from app.models.actividades import Actividades
 from app.models.programacion_meta import ProgramacionMeta
 from app.models.catalogo_pmd import CatalogoPMD
 from app.models.inter_actividades_pmd import ActividadPMD
+from app.models.entidad import Entidad
 
-router = APIRouter(prefix="/api/etl", tags=["etl"])
+router = APIRouter(prefix="/etl", tags=["etl"])
 
 
 @router.post("/poblar_unidades_administrativas")
@@ -36,7 +37,9 @@ def poblar_unidades_administrativas(
     file: UploadFile = File(...),
     ejercicio_id: int = Form(...),
     confirmar_actualizacion: bool = Form(False),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(require_any_role()),
+    entidad: Entidad = Depends(get_entidad_from_slug),
 ):
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Solo archivos Excel (.xlsx, .xls)")
@@ -69,17 +72,31 @@ def poblar_unidades_administrativas(
     unidad_nombre_idx = col_nombre
     unidad_plazas_idx = col_plazas
 
-    db_unidades = {u.clave: u for u in db.query(CatalogoUnidadesAdministrativas).all()}
+    db_unidades = {
+        u.clave: u
+        for u in db.query(CatalogoUnidadesAdministrativas)
+        .filter(CatalogoUnidadesAdministrativas.entidad_id == entidad.id)
+        .all()
+    }
     db_techos = db.query(TechoFinanciero).filter(TechoFinanciero.ejercicio_id == ejercicio_id).all()
     db_techos_map = defaultdict(list)
     for t in db_techos:
         db_techos_map[(t.unidad_administrativa_id, t.fuente_financiamiento_id)].append(t)
 
-    db_fuentes = {f.clave: f for f in db.query(CatalogoFuentesFinanciamiento).all()}
+    db_fuentes = {
+        f.clave: f
+        for f in db.query(CatalogoFuentesFinanciamiento)
+        .filter(CatalogoFuentesFinanciamiento.entidad_id == entidad.id)
+        .all()
+    }
     for clave_fuente, col in fuente_cols.items():
         descripcion_fuente = str(col).strip()
         if clave_fuente not in db_fuentes:
-            nueva = CatalogoFuentesFinanciamiento(clave=clave_fuente, descripcion=descripcion_fuente)
+            nueva = CatalogoFuentesFinanciamiento(
+                clave=clave_fuente,
+                descripcion=descripcion_fuente,
+                entidad_id=entidad.id,
+            )
             db.add(nueva)
             db.flush()
             db_fuentes[clave_fuente] = nueva
@@ -110,7 +127,12 @@ def poblar_unidades_administrativas(
             if cambios:
                 modificados_unidades.append({"clave": clave, "cambios": cambios})
         else:
-            nueva = CatalogoUnidadesAdministrativas(clave=clave, plazas=plazas_val, nombre=nombre_val)
+            nueva = CatalogoUnidadesAdministrativas(
+                clave=clave,
+                plazas=plazas_val,
+                nombre=nombre_val,
+                entidad_id=entidad.id,
+            )
             db.add(nueva)
             db.flush()
             db_unidades[clave] = nueva
@@ -182,7 +204,9 @@ def poblar_matriz_programatica(
     file: UploadFile = File(...),
     ejercicio_id: int = Form(...),
     confirmar_actualizacion: bool = Form(False),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(require_any_role()),
+    entidad: Entidad = Depends(get_entidad_from_slug),
 ):
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Solo archivos Excel (.xlsx, .xls)")
@@ -253,12 +277,28 @@ def poblar_matriz_programatica(
             cols_ffill.append(col_map[key])
     df[cols_ffill] = df[cols_ffill].ffill()
 
-    db_programas = {(p.clave, p.unidad_administrativa_id): p for p in db.query(CatalogoProgramas).filter(CatalogoProgramas.ejercicio_id == ejercicio_id).all()}
+    db_programas = {
+        (p.clave, p.unidad_administrativa_id): p
+        for p in db.query(CatalogoProgramas)
+        .filter(
+            CatalogoProgramas.ejercicio_id == ejercicio_id,
+            CatalogoProgramas.entidad_id == entidad.id,
+        )
+        .all()
+    }
     db_componentes = {(c.clave, c.programa_id): c for c in db.query(Componentes).all()}
     db_actividades = {a.clave: a for a in db.query(Actividades).all()}
-    db_pmd = {p.clave: p for p in db.query(CatalogoPMD).all()}
+    db_pmd = {
+        p.clave: p
+        for p in db.query(CatalogoPMD).filter(CatalogoPMD.entidad_id == entidad.id).all()
+    }
 
-    db_unidades = {u.clave: u for u in db.query(CatalogoUnidadesAdministrativas).all()}
+    db_unidades = {
+        u.clave: u
+        for u in db.query(CatalogoUnidadesAdministrativas)
+        .filter(CatalogoUnidadesAdministrativas.entidad_id == entidad.id)
+        .all()
+    }
 
     nuevos_programas = []
     modificados_programas = []
@@ -317,7 +357,12 @@ def poblar_matriz_programatica(
         ejecutor_nombre = " ".join(ejecutor_clave_raw.split()[1:]) if ejecutor_clave_raw and len(ejecutor_clave_raw.split()) > 1 else (ejecutor_clave_raw or None)
 
         if ejecutor_clave and ejecutor_clave not in db_unidades:
-            nueva_u = CatalogoUnidadesAdministrativas(clave=ejecutor_clave, plazas=None, nombre=ejecutor_nombre)
+            nueva_u = CatalogoUnidadesAdministrativas(
+                clave=ejecutor_clave,
+                plazas=None,
+                nombre=ejecutor_nombre,
+                entidad_id=entidad.id,
+            )
             db.add(nueva_u)
             db.flush()
             db_unidades[ejecutor_clave] = nueva_u
@@ -330,8 +375,10 @@ def poblar_matriz_programatica(
                 nuevo_p = CatalogoProgramas(
                     clave=prog_clave,
                     programa=prog_nombre,
+                    entidad_id=entidad.id,
                     ejercicio_id=ejercicio_id,
-                    unidad_administrativa_id=unidad_ejecutora.id if unidad_ejecutora else None
+                    unidad_administrativa_id=unidad_ejecutora.id if unidad_ejecutora else None,
+                    campos_extra={},
                 )
                 db.add(nuevo_p)
                 db.flush()
@@ -425,7 +472,7 @@ def poblar_matriz_programatica(
 
             for clave_pmd in pmd_claves_raw:
                 if clave_pmd not in db_pmd:
-                    nuevo_pmd = CatalogoPMD(clave=clave_pmd)
+                    nuevo_pmd = CatalogoPMD(clave=clave_pmd, entidad_id=entidad.id)
                     db.add(nuevo_pmd)
                     db.flush()
                     db_pmd[clave_pmd] = nuevo_pmd

@@ -1,6 +1,8 @@
 from app.db.database import Base
 
 # Importación de modelos
+from app.models.entidad import Entidad
+from app.models.entity_field_contract import EntityFieldContract, EntityType
 from app.models.actividades import Actividades
 from app.models.captura_periodos import CapturaPeriodos
 from app.models.catalogo_fuentes_financiamiento import CatalogoFuentesFinanciamiento

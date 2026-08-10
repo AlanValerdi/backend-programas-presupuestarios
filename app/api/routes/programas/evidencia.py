@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import TokenData, get_current_user, get_db
+from app.api.dependencies import TokenData, require_entidad_match, get_db
 from app.crud.programas import actividades as actividades_crud
 from app.crud.programas import avances as avances_crud
 from app.crud.programas import evidencia as evidencia_crud
@@ -54,12 +54,14 @@ def guardar_evidencia_borrador(
     avance_meta: int = Form(0),
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     if not files or not any(file and file.filename for file in files):
         raise HTTPException(status_code=400, detail="Debe adjuntar al menos un archivo")
 
-    actividad = actividades_crud.get_actividad_by_id(db, actividad_id)
+    actividad = actividades_crud.get_actividad_by_id(
+        db, actividad_id, entidad_id=current_user.entidad_id
+    )
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
 
@@ -124,7 +126,7 @@ def guardar_evidencia_borrador(
 def eliminar_evidencia(
     evidencia_id: int,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     ev = evidencia_crud.get_evidencia_by_id(db, evidencia_id)
     if not ev or not ev.activo:

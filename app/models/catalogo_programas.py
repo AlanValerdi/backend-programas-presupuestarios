@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, DateTime, Boolean, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -11,10 +12,14 @@ class CatalogoProgramas(Base):
     programa = Column(String, nullable=False) # TBD: Los programas deberian venir de un catalogo, pero por ahora lo dejamos como string
 
     # Llaves foraneas
+    entidad_id = Column(Integer, ForeignKey("entidades.id"), nullable=False, index=True)
     ejercicio_id = Column(Integer, ForeignKey("ejercicios.id"), nullable=False)
     unidad_administrativa_id = Column(Integer, ForeignKey("catalogo_unidades_administrativas.id"), nullable=False)
+
+    campos_extra = Column(JSONB, nullable=False, server_default="{}")
     
     # Relaciones
+    entidad = relationship("Entidad")
     ejercicio = relationship("Ejercicio", back_populates="programas")
     unidad_administrativa = relationship("CatalogoUnidadesAdministrativas", back_populates="programas")
     componentes = relationship("Componentes", back_populates="programa")

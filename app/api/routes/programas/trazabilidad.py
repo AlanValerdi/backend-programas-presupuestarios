@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import TokenData, get_current_user, get_db
+from app.api.dependencies import TokenData, require_entidad_match, get_db
 from app.crud.programas import avances as avances_crud
 from app.crud.programas import trazabilidad as trazabilidad_crud
 
@@ -13,7 +13,7 @@ def obtener_trazabilidad(
     actividad_id: int,
     mes: int,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     meta = avances_crud.get_programacion_meta(db, actividad_id, mes)
     if not meta:
@@ -40,7 +40,7 @@ def obtener_trazabilidad(
 @router.get("/trazabilidad")
 def obtener_trazabilidad_global(
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     logs = trazabilidad_crud.get_trazabilidad_global(db)
     return [

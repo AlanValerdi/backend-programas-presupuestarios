@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import TokenData, get_current_user, get_db
+from app.api.dependencies import TokenData, require_entidad_match, get_db
 from app.crud.programas import actividades as actividades_crud
 from app.models.programacion_avance import StatusAvance
 from app.schemas.programas import ActividadOut
@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("/actividades/revision", response_model=list[ActividadOut])
 def listar_actividades_revision(
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     actividades = actividades_crud.get_actividades_by_avance_status(
         db,
@@ -26,7 +26,7 @@ def listar_actividades_revision(
 @router.get("/actividades/revisadas", response_model=list[ActividadOut])
 def listar_actividades_revisadas(
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     actividades = actividades_crud.get_actividades_by_avance_status(
         db,

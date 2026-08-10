@@ -12,13 +12,13 @@ class CatalogoUnidadesAdministrativas(Base):
     plazas = Column(Integer, nullable=True) 
     nombre = Column(String, nullable=False) # nombre de la unidad administrativa
     activo = Column(Boolean, default=True)
+    entidad_id = Column(Integer, ForeignKey("entidades.id"), nullable=False, index=True)
 
     # metricas
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relaciones
+    entidad = relationship("Entidad")
     techos_financieros = relationship("TechoFinanciero", back_populates="unidad_administrativa")
     programas = relationship("CatalogoProgramas", back_populates="unidad_administrativa")
-
-     

@@ -18,8 +18,17 @@ def get_actividades_by_programa_ids(db: Session, programa_ids: list[int]) -> lis
     )
 
 
-def get_actividad_by_id(db: Session, actividad_id: int) -> Actividades | None:
-    return db.query(Actividades).filter(Actividades.id == actividad_id).first()
+def get_actividad_by_id(
+    db: Session, actividad_id: int, entidad_id: int | None = None
+) -> Actividades | None:
+    query = db.query(Actividades).filter(Actividades.id == actividad_id)
+    if entidad_id is not None:
+        query = (
+            query.join(Componentes, Actividades.componente_id == Componentes.id)
+            .join(CatalogoProgramas, Componentes.programa_id == CatalogoProgramas.id)
+            .filter(CatalogoProgramas.entidad_id == entidad_id)
+        )
+    return query.first()
 
 
 def get_actividades_by_avance_status(
@@ -32,6 +41,8 @@ def get_actividades_by_avance_status(
         .join(Componentes, Actividades.componente_id == Componentes.id)
         .join(CatalogoProgramas, Componentes.programa_id == CatalogoProgramas.id)
     )
+
+    query = query.filter(CatalogoProgramas.entidad_id == current_user.entidad_id)
 
     if current_user.rol == RolUsuario.EJECUTOR:
         query = query.filter(

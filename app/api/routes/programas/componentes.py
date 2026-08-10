@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import TokenData, get_current_user, get_db
+from app.api.dependencies import TokenData, require_entidad_match, get_db
 from app.crud.programas import catalogo as catalogo_crud
 from app.crud.programas import componentes as componentes_crud
 from app.schemas.programas import ComponenteOut
@@ -14,7 +14,7 @@ router = APIRouter()
 def listar_componentes(
     clave: str,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     programas = catalogo_crud.get_programas_by_clave(db, clave, current_user)
     if not programas:

@@ -142,6 +142,7 @@ def build_actividad_out(actividad: Actividades, programa_clave: str | None = Non
         "unidadAdministrativaClave": get_unidad_clave(actividad),
         "lineaAccionPmd": get_linea_accion_pmd(actividad),
         "programacionMensual": build_programacion_mensual(actividad),
+        "camposExtra": dict(actividad.campos_extra or {}),
     }
 
 
@@ -230,6 +231,7 @@ def build_programa_out_from_group(
             "otros": total_otros,
         },
         "estadoFlujo": p0.estado_flujo or "configuracion",
+        "camposExtra": dict(p0.campos_extra or {}),
     }
 
 

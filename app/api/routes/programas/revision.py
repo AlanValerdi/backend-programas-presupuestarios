@@ -3,7 +3,7 @@ import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import TokenData, get_current_user, get_db
+from app.api.dependencies import TokenData, require_entidad_match, get_db
 from app.crud.programas import avances as avances_crud
 from app.models.programacion_avance import StatusAvance
 from app.models.usuario import RolUsuario
@@ -21,7 +21,7 @@ def revisar_avance_mensual(
     mes: int,
     data: RevisionInput,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     if current_user.rol not in [RolUsuario.PLANEACION, RolUsuario.ADMINISTRADOR]:
         raise HTTPException(status_code=403, detail="No tienes permisos para realizar revisiones")

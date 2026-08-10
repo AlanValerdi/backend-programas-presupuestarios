@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.api.dependencies import TokenData, get_current_user, get_db
+from app.api.dependencies import TokenData, require_entidad_match, get_db
 from app.crud.programas import avances as avances_crud
 from app.models.programacion_avance import StatusAvance
 from app.services.programas.evidencia import save_evidencia_file
@@ -22,7 +22,7 @@ def guardar_avance_mensual(
     avance_meta: int = Form(...),
     files: List[UploadFile] = File([]),
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     meta = avances_crud.get_programacion_meta(db, actividad_id, mes)
     if not meta:

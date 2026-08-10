@@ -9,8 +9,10 @@ class CatalogoFuentesFinanciamiento(Base):
     id = Column(Integer, primary_key=True, index=True)
     clave = Column(String, nullable=False, comment="Ej. 5.02") # clave de la fuente de financiamiento
     descripcion = Column(String, nullable=False, comment= "Ej. FAISMUN") # nombre de la fuente de financiamiento
+    entidad_id = Column(Integer, ForeignKey("entidades.id"), nullable=False, index=True)
 
     # Relaciones
+    entidad = relationship("Entidad")
     techos_financieros = relationship("TechoFinanciero", back_populates="fuente_financiamiento")
 
     # metricas

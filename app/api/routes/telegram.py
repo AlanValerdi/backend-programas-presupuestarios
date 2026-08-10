@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import TokenData, get_current_user, get_db
+from app.api.dependencies import TokenData, require_entidad_match, get_db
 from app.core.config import TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET
 from app.crud import crud_telegram, crud_usuario
 from app.schemas.telegram import (
@@ -17,15 +17,15 @@ from app.services.telegram.linking import (
     send_safe_message,
 )
 
-router = APIRouter(prefix="/api/telegram", tags=["telegram"])
+router = APIRouter(prefix="/telegram", tags=["telegram"])
 
 
 @router.get("/link/status", response_model=TelegramLinkStatusOut)
 def get_telegram_link_status(
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
-    user = crud_usuario.get_usuario_by_username(db, current_user.sub)
+    user = crud_usuario.get_usuario_by_username(db, current_user.sub, current_user.entidad_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -36,7 +36,7 @@ def get_telegram_link_status(
 @router.post("/link/generate", response_model=TelegramLinkGenerateOut)
 def generate_telegram_link(
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     if not TELEGRAM_BOT_USERNAME:
         raise HTTPException(
@@ -44,7 +44,7 @@ def generate_telegram_link(
             detail="Telegram bot username is not configured",
         )
 
-    user = crud_usuario.get_usuario_by_username(db, current_user.sub)
+    user = crud_usuario.get_usuario_by_username(db, current_user.sub, current_user.entidad_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -59,9 +59,9 @@ def generate_telegram_link(
 @router.delete("/link", response_model=TelegramLinkActionOut)
 def unlink_telegram(
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
-    user = crud_usuario.get_usuario_by_username(db, current_user.sub)
+    user = crud_usuario.get_usuario_by_username(db, current_user.sub, current_user.entidad_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 

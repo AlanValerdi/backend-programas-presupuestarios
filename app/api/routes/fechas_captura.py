@@ -3,13 +3,14 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime
 from calendar import monthrange
-from app.api.dependencies import get_db
+from app.api.dependencies import get_db, require_any_role, TokenData, get_entidad_from_slug
 from app.models.captura_periodos import CapturaPeriodos
 from app.models.ejercicio import Ejercicio
+from app.models.entidad import Entidad
 from app.schemas.fechas_captura import FechaCapturaOut
 
 
-router = APIRouter(prefix="/api/fechas-captura", tags=["fechas_captura"])
+router = APIRouter(prefix="/fechas-captura", tags=["fechas_captura"])
 
 
 class FechaCapturaUpdate(BaseModel):
@@ -18,19 +19,33 @@ class FechaCapturaUpdate(BaseModel):
 
 
 @router.get("", response_model=list[FechaCapturaOut])
-def listar_fechas_captura(db: Session = Depends(get_db)):
-    # Auto-seed if table is empty
-    count = db.query(CapturaPeriodos).count()
+def listar_fechas_captura(
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(require_any_role()),
+    entidad: Entidad = Depends(get_entidad_from_slug),
+):
+    ejercicio = (
+        db.query(Ejercicio)
+        .filter(Ejercicio.activo == True, Ejercicio.entidad_id == entidad.id)
+        .first()
+    )
+    if not ejercicio:
+        ejercicio = (
+            db.query(Ejercicio)
+            .filter(Ejercicio.entidad_id == entidad.id)
+            .first()
+        )
+    if not ejercicio:
+        ejercicio = Ejercicio(anio=2026, activo=True, entidad_id=entidad.id)
+        db.add(ejercicio)
+        db.flush()
+
+    count = (
+        db.query(CapturaPeriodos)
+        .filter(CapturaPeriodos.ejercicio_id == ejercicio.id)
+        .count()
+    )
     if count == 0:
-        ejercicio = db.query(Ejercicio).filter(Ejercicio.activo == True).first()
-        if not ejercicio:
-            ejercicio = db.query(Ejercicio).first()
-        if not ejercicio:
-            # Create default 2026 exercise
-            ejercicio = Ejercicio(anio=2026, activo=True)
-            db.add(ejercicio)
-            db.flush()
-        
         year = ejercicio.anio
         for m in range(1, 13):
             _, last_day = monthrange(year, m)
@@ -48,6 +63,7 @@ def listar_fechas_captura(db: Session = Depends(get_db)):
 
     periodos = (
         db.query(CapturaPeriodos)
+        .filter(CapturaPeriodos.ejercicio_id == ejercicio.id)
         .order_by(CapturaPeriodos.mes)
         .all()
     )
@@ -71,9 +87,16 @@ def listar_fechas_captura(db: Session = Depends(get_db)):
 def actualizar_fecha_captura(
     id: int,
     data: FechaCapturaUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(require_any_role()),
+    entidad: Entidad = Depends(get_entidad_from_slug),
 ):
-    periodo = db.query(CapturaPeriodos).filter(CapturaPeriodos.id == id).first()
+    periodo = (
+        db.query(CapturaPeriodos)
+        .join(Ejercicio, CapturaPeriodos.ejercicio_id == Ejercicio.id)
+        .filter(CapturaPeriodos.id == id, Ejercicio.entidad_id == entidad.id)
+        .first()
+    )
     if not periodo:
         raise HTTPException(status_code=404, detail="Periodo no encontrado")
         
@@ -86,7 +109,6 @@ def actualizar_fecha_captura(
         raise HTTPException(status_code=400, detail=f"Formato de fecha inválido: {date_str}. Use MM/DD/YYYY o YYYY-MM-DD.")
         
     periodo.fecha_inicio_reporte = parse_date(data.fechaInicio)
-    # Ensure end date is at the end of that day (23:59:59)
     parsed_end = parse_date(data.fechaTermino)
     periodo.fecha_fin_reporte = datetime(parsed_end.year, parsed_end.month, parsed_end.day, 23, 59, 59)
     db.commit()

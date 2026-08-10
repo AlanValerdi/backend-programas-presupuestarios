@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import TokenData, get_current_user, get_db
+from app.api.dependencies import TokenData, require_entidad_match, get_db
 from app.crud.programas import catalogo as catalogo_crud
 from app.crud.programas import presupuesto as presupuesto_crud
 from app.models.usuario import RolUsuario
@@ -23,7 +23,7 @@ def _presupuesto_fn(db: Session):
 
 def listar_programas(
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     programas = catalogo_crud.list_programas(db, current_user)
     return aggregate_programas_grouped(programas, _presupuesto_fn(db))
@@ -33,7 +33,7 @@ def listar_programas(
 def obtener_programa(
     clave: str,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     programas = catalogo_crud.get_programas_by_clave(db, clave, current_user)
     if not programas:
@@ -46,7 +46,7 @@ def actualizar_estado_programa(
     clave: str,
     estado: str = Body(..., embed=True),
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     if current_user.rol not in [RolUsuario.PLANEACION, RolUsuario.ADMINISTRADOR]:
         raise HTTPException(
@@ -65,6 +65,6 @@ def actualizar_estado_programa(
             detail=f"Estado inválido. Debe ser uno de: {estados_validos}",
         )
 
-    catalogo_crud.update_estado_programa(db, clave, estado)
+    catalogo_crud.update_estado_programa(db, clave, estado, current_user.entidad_id)
     programas = catalogo_crud.get_programas_by_clave(db, clave, current_user)
     return build_programa_out_from_group(programas, _presupuesto_fn(db))

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import TokenData, get_current_user, get_db
+from app.api.dependencies import TokenData, require_entidad_match, get_db
 from app.crud.programas import actividades as actividades_crud
 from app.crud.programas import catalogo as catalogo_crud
 from app.models.usuario import RolUsuario
@@ -15,9 +15,11 @@ router = APIRouter()
 def obtener_actividad(
     actividad_id: int,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
-    actividad = actividades_crud.get_actividad_by_id(db, actividad_id)
+    actividad = actividades_crud.get_actividad_by_id(
+        db, actividad_id, entidad_id=current_user.entidad_id
+    )
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
 
@@ -33,7 +35,7 @@ def obtener_actividad(
 def listar_actividades(
     clave: str,
     db: Session = Depends(get_db),
-    current_user: TokenData = Depends(get_current_user),
+    current_user: TokenData = Depends(require_entidad_match),
 ):
     programas = catalogo_crud.get_programas_by_clave(db, clave, current_user)
     if not programas:

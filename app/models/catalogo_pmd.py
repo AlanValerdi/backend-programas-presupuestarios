@@ -8,8 +8,10 @@ class CatalogoPMD(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     clave = Column(String, nullable=False) # clave de la linea de acción
+    entidad_id = Column(Integer, ForeignKey("entidades.id"), nullable=False, index=True)
     
     # Relaciones
+    entidad = relationship("Entidad")
     actividades = relationship("Actividades", secondary="inter_actividades_pmd", back_populates="lineas_pmd")
 
     # metricas

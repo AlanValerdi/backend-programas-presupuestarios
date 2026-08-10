@@ -1,17 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_db
+from app.api.dependencies import get_db, require_any_role, TokenData, get_entidad_from_slug
 from app.models.catalogo_unidades_administrativas import CatalogoUnidadesAdministrativas
+from app.models.entidad import Entidad
 from app.schemas.unidades import UnidadOut
 
 
-router = APIRouter(prefix="/api/unidades", tags=["unidades"])
+router = APIRouter(prefix="/unidades", tags=["unidades"])
 
 
 @router.get("", response_model=list[UnidadOut])
-def listar_unidades(db: Session = Depends(get_db)):
+def listar_unidades(
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(require_any_role()),
+    entidad: Entidad = Depends(get_entidad_from_slug),
+):
     unidades = (
         db.query(CatalogoUnidadesAdministrativas)
+        .filter(CatalogoUnidadesAdministrativas.entidad_id == entidad.id)
         .order_by(CatalogoUnidadesAdministrativas.clave)
         .all()
     )
@@ -29,10 +35,18 @@ def listar_unidades(db: Session = Depends(get_db)):
 
 
 @router.get("/{numero}", response_model=UnidadOut)
-def obtener_unidad(numero: str, db: Session = Depends(get_db)):
+def obtener_unidad(
+    numero: str,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(require_any_role()),
+    entidad: Entidad = Depends(get_entidad_from_slug),
+):
     unidad = (
         db.query(CatalogoUnidadesAdministrativas)
-        .filter(CatalogoUnidadesAdministrativas.clave == numero)
+        .filter(
+            CatalogoUnidadesAdministrativas.clave == numero,
+            CatalogoUnidadesAdministrativas.entidad_id == entidad.id,
+        )
         .first()
     )
     if not unidad:

@@ -21,6 +21,7 @@ def hashear_password(password: str) -> str:
 def crear_token_acceso(
     data: dict,
     rol: str,
+    entidad_id: int,
     unidad_administrativa_id: int | None = None,
 ) -> str:
     to_encode = data.copy()
@@ -28,6 +29,7 @@ def crear_token_acceso(
     to_encode.update({
         "exp": expira,
         "rol": rol,
+        "entidad_id": entidad_id,
         "unidad_administrativa_id": unidad_administrativa_id,
     })
     token_codificado = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

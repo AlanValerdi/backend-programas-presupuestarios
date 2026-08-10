@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, DateTime, Boolean, ForeignKey, Numeric, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -14,6 +15,8 @@ class Actividades(Base):
 
     # Llaves foraneas
     componente_id = Column(Integer, ForeignKey("componentes.id"), nullable=False)
+
+    campos_extra = Column(JSONB, nullable=False, server_default="{}")
 
     # Relaciones
     componente = relationship("Componentes", back_populates="actividades")
